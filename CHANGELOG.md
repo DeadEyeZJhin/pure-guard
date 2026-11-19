@@ -5,6 +5,16 @@ the app: the phone shows them under **What's new** after an update, and the upda
 them to phones that have not updated yet. `tools/release.py` reads one `## <version> — <date>`
 heading per release, then its `- ` bullets (a bullet may wrap onto indented lines).
 
+## 1.19 — upcoming
+- **"Unlock and remove" fully lets go.** Android's always-on VPN no longer restarts the web
+  filter after unlocking, and Private DNS goes back to Android's default.
+- **Xiaomi: "No restrictions" is detected.** Xiaomi manages VPN apps with its own
+  "No restrictions", so that is the setting Pure Guard checks there.
+- **Always-on VPN stays set** on Android 12 and newer while protected.
+- **Shield bounce.** The shield on the home screen bounces when tapped.
+- **Preview the home screen** from the setup screen, without locking anything.
+- **Quieter wording** in Android's Accessibility settings.
+
 ## 1.18 — 2026-11-19
 - **Activate without a PC or Shizuku.** Tap **Wireless debugging**, open "Pair device with
   pairing code" and type the 6 digits into Pure Guard's notification. Shizuku still works too.

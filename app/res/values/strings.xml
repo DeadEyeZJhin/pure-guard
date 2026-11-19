@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Pure Guard</string>
-    <!-- Watch.java looks for this exact text to keep the switch-off screen closed. -->
-    <string name="watch_desc">Pure Guard keeps adult sites blocked in browsers: a blocked address sends the phone to the Home screen.</string>
+    <!-- Shown in Settings > Accessibility. Worded like a security app on purpose (the home screen is a disguise). -->
+    <string name="watch_desc">The Browser Shield checks the web addresses you open and keeps unsafe pages away.</string>
 </resources>

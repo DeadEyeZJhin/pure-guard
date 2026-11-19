@@ -39,6 +39,12 @@ public final class Vpn extends VpnService implements Runnable {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // Always-on VPN starts this service by itself, also after "Unlock and remove": no filter then.
+        if (!Guard.locked(this)) {
+            Guard.releaseAlwaysOn(this);
+            stopSelf();
+            return START_NOT_STICKY;
+        }
         if (loop == null) {
             loop = new Thread(this, "pureguard-vpn");
             loop.start();

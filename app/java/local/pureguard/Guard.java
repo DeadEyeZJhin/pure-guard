@@ -75,9 +75,9 @@ final class Guard {
     // Puts back whatever was switched off. Runs at boot, every minute from the VPN and from Watch.
     static void heal(Context c) {
         releaseAdmin(c);
-        if (!locked(c)) return;
         ContentResolver cr = c.getContentResolver();
         String me = c.getPackageName();
+        if (!locked(c)) return;
         if (canHeal(c)) try {
             String w = me + "/.Watch";
             String s = Settings.Secure.getString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
@@ -91,7 +91,7 @@ final class Guard {
                         s == null || s.isEmpty() ? w : s + ":" + w);
                 Settings.Secure.putString(cr, Settings.Secure.ACCESSIBILITY_ENABLED, "1");
             }
-            if (!me.equals(Settings.Secure.getString(cr, "always_on_vpn_app"))) {
+            if (!me.equals(alwaysOn(cr))) { // unreadable on Android 12+: the write is then a no-op when unchanged
                 Settings.Secure.putString(cr, "always_on_vpn_app", me);
                 Settings.Secure.putString(cr, "always_on_vpn_lockdown", "0");
             }
@@ -128,11 +128,23 @@ final class Guard {
             String s = Settings.Secure.getString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
             if (s != null) Settings.Secure.putString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
                     s.replaceAll(":?" + java.util.regex.Pattern.quote(me) + "/[^:]*", "").replaceAll("^:", ""));
-            if (me.equals(Settings.Secure.getString(cr, "always_on_vpn_app")))
-                Settings.Secure.putString(cr, "always_on_vpn_app", "");
+            releaseAlwaysOn(c);
             Settings.Global.putString(cr, "private_dns_mode", "opportunistic"); // Android's default
         } catch (Exception ignored) {}
         c.stopService(new Intent(c, Vpn.class));
+    }
+
+    // Android 12+ lets normal apps write always_on_vpn_app but not read it: null then.
+    static String alwaysOn(ContentResolver cr) {
+        try { return Settings.Secure.getString(cr, "always_on_vpn_app"); } catch (Exception e) { return null; }
+    }
+
+    // Only called when unlocked, where Pure Guard was the always-on VPN (it set itself there while locked).
+    static void releaseAlwaysOn(Context c) {
+        ContentResolver cr = c.getContentResolver();
+        String a = alwaysOn(cr);
+        if (!canHeal(c) || a != null && !a.equals(c.getPackageName())) return;
+        try { Settings.Secure.putString(cr, "always_on_vpn_app", ""); } catch (Exception ignored) {}
     }
 
     // Older test builds made Pure Guard a device admin or owner, which blocks uninstalling it.

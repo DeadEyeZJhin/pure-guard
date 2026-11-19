@@ -55,7 +55,7 @@ public final class Main extends Activity {
     private int wrong;
     private long waitUntil;
     private boolean details; // core screen open (after 10 taps on the shield)
-    private boolean pairing, helpWifi, busy, scanning;
+    private boolean pairing, helpWifi, busy, scanning, preview;
     private int taps;
     private long firstTap;
     private Ring ring;
@@ -146,11 +146,13 @@ public final class Main extends Activity {
         super.onStop();
         if (ring != null) ring.spin(false);
         if (Guard.locked(this)) details = false; // leaving the app always returns to the home screen
+        preview = false;
     }
 
     @Override
     public void onBackPressed() {
-        if (details && Guard.locked(this)) { details = false; refresh(); }
+        if (preview) { preview = false; refresh(); }
+        else if (details && Guard.locked(this)) { details = false; refresh(); }
         else super.onBackPressed();
     }
 
@@ -159,7 +161,7 @@ public final class Main extends Activity {
         box.removeAllViews();
         cur = box;
         ring = null;
-        if (Guard.locked(this) && !details) front();
+        if (preview || Guard.locked(this) && !details) front();
         else core();
     }
 
@@ -189,7 +191,13 @@ public final class Main extends Activity {
         View.OnClickListener secret = v -> {
             long now = android.os.SystemClock.uptimeMillis();
             if (now - firstTap > 4000) { firstTap = now; taps = 0; }
-            if (++taps >= 10) { taps = 0; details = true; refresh(); }
+            if (++taps >= 10) { taps = 0; details = true; preview = false; refresh(); }
+            // A small bounce, like a real button.
+            shield.animate().cancel();
+            shield.setScaleX(0.86f);
+            shield.setScaleY(0.86f);
+            shield.animate().scaleX(1f).scaleY(1f).setDuration(320)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator(5f)).start();
         };
         shield.setOnClickListener(secret);
         ring.spin(true);
@@ -390,7 +398,10 @@ public final class Main extends Activity {
             l.setTextIsSelectable(true);
         }
         cur = box;
-        if (locked) { space(6); flat("‹ Back to home", () -> { details = false; refresh(); }); }
+        space(6);
+        if (locked) flat("‹ Back to home", () -> { details = false; refresh(); });
+        // See what the phone's user will see, without locking anything. Back returns here.
+        else flat("Preview the home screen", () -> { preview = true; refresh(); });
     }
 
     private void activateThis() {
@@ -437,16 +448,14 @@ public final class Main extends Activity {
 
     private void beforeLock() {
         // Without these, Xiaomi stops Pure Guard in the background or after a restart.
-        boolean nr = !xiaomi() || Guard.prefs(this).getBoolean("miui_battery", false), auto = !xiaomi() || autostartOn();
-        boolean idle = battery(); // setup adds this, but Xiaomi clears it once shortly after an install
+        boolean idle = battery(), nr = idle, auto = !xiaomi() || autostartOn();
         section("Before you lock");
         text("✓ This phone is activated. Finish these, then create the password.", 14, GREEN);
         check("Setup permission", true, null, null);
         if (xiaomi()) {
             check("Xiaomi battery saver: No restrictions", nr, "Open", this::xiaomiBattery);
             check("Xiaomi Autostart", auto, "Open", this::autostart);
-        }
-        check("Run in the background", idle, "Allow", this::batteryDialog);
+        } else check("Run in the background", idle, "Allow", this::batteryDialog);
 
         section("Unlock password");
         para("Give it to the accountability partner, not to the phone's user. It is needed to turn protection off.");
@@ -472,11 +481,10 @@ public final class Main extends Activity {
                     + "on in Settings › Accessibility. (Android blocks it after an update installed from a file.)");
         check("Self-repair permission", Guard.canHeal(this), null, null);
         if (!Guard.canHeal(this)) para("Run setup again (Wireless debugging, Shizuku or setup.bat) after unlocking.");
-        check("Run in the background", battery(), "Allow", this::batteryDialog);
         if (xiaomi()) {
-            check("Xiaomi battery saver", Guard.prefs(this).getBoolean("miui_battery", false), "Open", this::xiaomiBattery);
+            check("Xiaomi battery saver", battery(), "Open", this::xiaomiBattery);
             check("Xiaomi Autostart", autostartOn(), "Open", this::autostart);
-        }
+        } else check("Run in the background", battery(), "Allow", this::batteryDialog);
 
         section("Partner");
         EditText pw = field("Unlock password", true);
@@ -578,8 +586,15 @@ public final class Main extends Activity {
         return false;
     }
 
+    // Xiaomi's PowerKeeper takes VPN apps off Android's battery list by itself ("removeList" in the
+    // log as soon as the VPN starts) and manages them with its own "No restrictions": that one counts there.
     private boolean battery() {
-        return ((PowerManager) getSystemService(POWER_SERVICE)).isIgnoringBatteryOptimizations(getPackageName());
+        boolean listed = ((PowerManager) getSystemService(POWER_SERVICE)).isIgnoringBatteryOptimizations(getPackageName());
+        if (!xiaomi()) return listed;
+        // Xiaomi's "No restrictions" puts the app on Android's list too, but that only shows while the VPN is
+        // off (before locking): remember the yes. Watch also reads the setting off Xiaomi's own screen.
+        if (listed && !Vpn.running) Guard.prefs(this).edit().putBoolean("miui_battery", true).apply();
+        return Guard.prefs(this).getBoolean("miui_battery", false);
     }
 
     private void batteryDialog() {
