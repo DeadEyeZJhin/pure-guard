@@ -36,24 +36,36 @@ final class Update {
         }
     }
 
+    @SuppressWarnings("deprecation")
+    static String myName(Context c) {
+        try { return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName; } catch (Exception e) { return "?"; }
+    }
+
     // Fetches update.json at most every 6 hours, then runs `done` (on the calling thread's side: post it).
     static void refresh(Context c, Runnable done) {
+        if (System.currentTimeMillis() - prefs(c).getLong("upd_at", 0) < EVERY) return;
+        fetch(c, done, null);
+    }
+
+    // Fetches update.json now ("Check for updates"); `failed` runs when offline or GitHub answers oddly.
+    static void fetch(Context c, Runnable done, Runnable failed) {
         SharedPreferences p = prefs(c);
-        if (System.currentTimeMillis() - p.getLong("upd_at", 0) < EVERY) return;
         p.edit().putLong("upd_at", System.currentTimeMillis()).apply();
         new Thread(() -> {
             try {
                 HttpURLConnection h = (HttpURLConnection) new URL(URL).openConnection();
                 h.setConnectTimeout(10000);
                 h.setReadTimeout(10000);
-                if (h.getResponseCode() != 200) return;
+                if (h.getResponseCode() != 200) throw new java.io.IOException("HTTP " + h.getResponseCode());
                 try (InputStream in = h.getInputStream()) {
                     String s = new String(Adb.readAll(in), "UTF-8");
                     new JSONObject(s); // only valid JSON is kept
                     p.edit().putString("upd", s).apply();
                 }
                 done.run();
-            } catch (Exception ignored) {} // offline: try again next time
+            } catch (Exception e) { // offline: the 6-hour check tries again next time
+                if (failed != null) failed.run();
+            }
         }).start();
     }
 

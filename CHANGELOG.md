@@ -5,6 +5,10 @@ the app: the phone shows them under **What's new** after an update, and the upda
 them to phones that have not updated yet. `tools/release.py` reads one `## <version> — <date>`
 heading per release, then its `- ` bullets (a bullet may wrap onto indented lines).
 
+## 1.20 — upcoming
+- **Check for updates.** A "Check for updates" link on the home screen and at the bottom of the
+  setup screen checks right away, instead of waiting for the automatic check (every 6 hours).
+
 ## 1.19 — 2026-11-19
 - **"Unlock and remove" fully lets go.** The web filter stops right away, Android's always-on
   VPN no longer restarts it, and Private DNS goes back to Android's default.

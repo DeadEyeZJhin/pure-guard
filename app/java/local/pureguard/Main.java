@@ -251,6 +251,17 @@ public final class Main extends Activity {
         button("Quick scan", GREEN, ON_GREEN, this::scan);
         org.json.JSONObject u = Update.newer(this);
         if (u != null) button("Update available  ·  " + u.optString("versionName"), CARD2, TEXT, () -> download(u));
+        else flat("Check for updates", this::checkUpdates);
+    }
+
+    private void checkUpdates() {
+        toast("Checking for updates…");
+        Update.fetch(this, () -> ui.post(() -> {
+            refresh();
+            org.json.JSONObject u = Update.newer(this);
+            toast(u != null ? "Update available: " + u.optString("versionName")
+                    : "You have the latest version (" + Update.myName(this) + ").");
+        }), () -> ui.post(() -> toast("Could not check for updates. Is the internet on?")));
     }
 
     private void download(org.json.JSONObject u) {
@@ -432,6 +443,7 @@ public final class Main extends Activity {
         if (locked) flat("‹ Back to home", () -> { details = false; refresh(); });
         // See what the phone's user will see, without locking anything. Back returns here.
         else flat("Preview the home screen", () -> { preview = true; refresh(); });
+        flat("Pure Guard " + Update.myName(this) + "  ·  Check for updates", this::checkUpdates);
     }
 
     private void activateThis() {
