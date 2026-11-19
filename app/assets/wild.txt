@@ -1,0 +1,5 @@
+# A name and every subdomain of it (same list as the tablet lock's wild.txt).
+hitomi.la
+gold-usergeneratedcontent.net
+mangadistrict.com
+anihq.cc

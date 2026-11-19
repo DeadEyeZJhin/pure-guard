@@ -1,0 +1,6 @@
+out/
+# Notes from studying other apps' methods: kept local.
+research.md
+*.keystore
+*.pass
+*.idsig
