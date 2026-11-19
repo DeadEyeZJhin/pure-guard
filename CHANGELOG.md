@@ -11,6 +11,10 @@ heading per release, then its `- ` bullets (a bullet may wrap onto indented line
 - **Xiaomi: "No restrictions" is detected.** Xiaomi manages VPN apps with its own
   "No restrictions", so that is the setting Pure Guard checks there.
 - **Always-on VPN stays set** on Android 12 and newer while protected.
+- **Status updates by itself.** The screens notice within a second when a shield comes up or
+  goes down, so there is no need to close and reopen the app.
+- **Calm start.** Right after opening, the home screen says "Checking shields…" while the
+  shields come up, instead of a warning.
 - **Shield bounce.** The shield on the home screen bounces when tapped.
 - **Preview the home screen** from the setup screen, without locking anything.
 - **Quieter wording** in Android's Accessibility settings.

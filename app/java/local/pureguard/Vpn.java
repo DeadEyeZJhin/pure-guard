@@ -137,6 +137,7 @@ public final class Vpn extends VpnService implements Runnable {
     private synchronized void close() {
         try { if (tun != null) tun.close(); } catch (Exception ignored) {}
         tun = null;
+        running = false;
     }
 
     @Override

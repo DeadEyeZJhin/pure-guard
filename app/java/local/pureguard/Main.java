@@ -103,12 +103,15 @@ public final class Main extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        resumedAt = android.os.SystemClock.uptimeMillis();
         Guard.heal(this);
         if (Guard.setUp(this)) { pairing = false; Activate.cancel(this); }
         refresh();
         Update.refresh(this, () -> ui.post(this::refresh));
         popups();
         autoActivate();
+        ui.removeCallbacks(recheck);
+        ui.postDelayed(recheck, 1000);
     }
 
     // "Activated ✓" once after activation; "What's new" once after an update (not on the disguised home).
@@ -144,6 +147,7 @@ public final class Main extends Activity {
     @Override
     protected void onStop() {
         super.onStop();
+        ui.removeCallbacks(recheck);
         if (ring != null) ring.spin(false);
         if (Guard.locked(this)) details = false; // leaving the app always returns to the home screen
         preview = false;
@@ -156,8 +160,31 @@ public final class Main extends Activity {
         else super.onBackPressed();
     }
 
+    // Status at the last redraw. Protection starts and stops a few seconds after the screen is drawn
+    // (VPN, Browser Shield, Xiaomi's battery list), so a visible screen re-checks every second.
+    private String shown = "";
+    private final Runnable recheck = new Runnable() {
+        @Override
+        public void run() {
+            if (!busy && !scanning && !state().equals(shown)) refresh();
+            ui.postDelayed(this, 1000);
+        }
+    };
+
+    private long resumedAt;
+
+    private boolean starting() {
+        return android.os.SystemClock.uptimeMillis() - resumedAt < 8000;
+    }
+
+    private String state() {
+        return "" + starting() + Guard.locked(this) + Guard.setUp(this) + Vpn.running + (watchOn() && Watch.alive)
+                + battery() + (!xiaomi() || autostartOn());
+    }
+
     private void refresh() {
         if (scanning) return;
+        shown = state();
         box.removeAllViews();
         cur = box;
         ring = null;
@@ -170,7 +197,10 @@ public final class Main extends Activity {
     private void front() {
         boolean web = Vpn.running, browser = watchOn() && Watch.alive, heal = Guard.canHeal(this), bg = battery();
         int bad = (web ? 0 : 1) + (browser ? 0 : 1) + (heal ? 0 : 1) + (bg ? 0 : 1);
-        int accent = bad == 0 ? GREEN : AMBER;
+        // Right after the app opens (or Xiaomi restarted it) the shields take a few seconds to come up:
+        // show that calmly, warnings only if something is still off after that.
+        boolean wait = bad > 0 && starting();
+        int accent = bad == 0 || wait ? GREEN : AMBER;
 
         TextView brand = text("PURE GUARD", 13, SUB);
         brand.setLetterSpacing(0.25f);
@@ -180,7 +210,7 @@ public final class Main extends Activity {
         ring = new Ring(this, accent);
         hero.addView(ring, new FrameLayout.LayoutParams(-1, -1));
         ImageView shield = new ImageView(this);
-        shield.setImageResource(bad == 0 ? R.drawable.shield_big : R.drawable.shield_warn);
+        shield.setImageResource(bad == 0 || wait ? R.drawable.shield_big : R.drawable.shield_warn);
         FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(dp(110), dp(110), Gravity.CENTER);
         hero.addView(shield, sp);
         LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(dp(250), dp(250));
@@ -202,21 +232,21 @@ public final class Main extends Activity {
         shield.setOnClickListener(secret);
         ring.spin(true);
 
-        frontTitle = text(bad == 0 ? "You're protected" : !web ? "Starting protection…" : "Needs attention", 28, TEXT);
+        frontTitle = text(bad == 0 ? "You're protected" : wait ? "Checking shields…" : !web ? "Starting protection…" : "Needs attention", 28, TEXT);
         frontTitle.setTypeface(Typeface.DEFAULT_BOLD);
         frontTitle.setGravity(Gravity.CENTER);
         long last = Guard.prefs(this).getLong("scan", 0);
-        frontSub = text((bad == 0 ? "All shields are active" : bad + (bad == 1 ? " shield needs" : " shields need") + " attention")
+        frontSub = text((bad == 0 ? "All shields are active" : wait ? "One moment" : bad + (bad == 1 ? " shield needs" : " shields need") + " attention")
                 + (last <= 0 ? "" : System.currentTimeMillis() - last < 60_000 ? "  ·  Scanned just now"
                 : "  ·  Scanned " + DateUtils.getRelativeTimeSpanString(last, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS)), 14, SUB);
         frontSub.setGravity(Gravity.CENTER);
         space(16);
 
         LinearLayout r1 = rowBox(), r2 = rowBox();
-        tile(r1, "Web Shield", web);
-        tile(r1, "Browser Shield", browser);
-        tile(r2, "Auto-Repair", heal);
-        tile(r2, "Always On", bg);
+        tile(r1, "Web Shield", web, wait);
+        tile(r1, "Browser Shield", browser, wait);
+        tile(r2, "Auto-Repair", heal, wait);
+        tile(r2, "Always On", bg, wait);
         space(18);
         button("Quick scan", GREEN, ON_GREEN, this::scan);
         org.json.JSONObject u = Update.newer(this);
@@ -254,7 +284,7 @@ public final class Main extends Activity {
         a.start();
     }
 
-    private void tile(LinearLayout row, String name, boolean on) {
+    private void tile(LinearLayout row, String name, boolean on, boolean wait) {
         LinearLayout t = new LinearLayout(this);
         t.setOrientation(LinearLayout.VERTICAL);
         t.setPadding(dp(14), dp(14), dp(14), dp(14));
@@ -265,11 +295,11 @@ public final class Main extends Activity {
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
         View dot = new View(this);
-        dot.setBackground(oval(on ? GREEN : AMBER));
+        dot.setBackground(oval(on ? GREEN : wait ? SUB : AMBER));
         top.addView(dot, new LinearLayout.LayoutParams(dp(9), dp(9)));
         TextView s = new TextView(this);
-        s.setText(on ? "  Active" : "  Off");
-        s.setTextColor(on ? GREEN : AMBER);
+        s.setText(on ? "  Active" : wait ? "  Starting" : "  Off");
+        s.setTextColor(on ? GREEN : wait ? SUB : AMBER);
         s.setTextSize(12);
         top.addView(s);
         t.addView(top);
