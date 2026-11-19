@@ -42,13 +42,17 @@ public final class Vpn extends VpnService implements Runnable {
         // Always-on VPN starts this service by itself, also after "Unlock and remove": no filter then.
         if (!Guard.locked(this)) {
             Guard.releaseAlwaysOn(this);
+            close(); // Android stays bound to an established VPN: stopService alone never ends it
             stopSelf();
             return START_NOT_STICKY;
         }
         if (loop == null) {
             loop = new Thread(this, "pureguard-vpn");
             loop.start();
-            tick.scheduleWithFixedDelay(() -> Guard.heal(this), 60, 60, TimeUnit.SECONDS);
+            tick.scheduleWithFixedDelay(() -> {
+                if (Guard.locked(this)) Guard.heal(this);
+                else { close(); stopSelf(); }
+            }, 60, 60, TimeUnit.SECONDS);
         }
         return START_STICKY;
     }
@@ -130,6 +134,11 @@ public final class Vpn extends VpnService implements Runnable {
         return null;
     }
 
+    private synchronized void close() {
+        try { if (tun != null) tun.close(); } catch (Exception ignored) {}
+        tun = null;
+    }
+
     @Override
     public void onRevoke() {
         stopSelf();
@@ -140,7 +149,7 @@ public final class Vpn extends VpnService implements Runnable {
         running = false;
         tick.shutdownNow();
         pool.shutdownNow();
-        try { if (tun != null) tun.close(); } catch (Exception ignored) {}
+        close();
         Guard.vpnDown(this);
         super.onDestroy();
     }

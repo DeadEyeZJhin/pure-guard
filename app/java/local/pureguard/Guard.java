@@ -131,7 +131,8 @@ final class Guard {
             releaseAlwaysOn(c);
             Settings.Global.putString(cr, "private_dns_mode", "opportunistic"); // Android's default
         } catch (Exception ignored) {}
-        c.stopService(new Intent(c, Vpn.class));
+        // Vpn sees it is unlocked and closes its tunnel (stopService cannot end an established VPN).
+        try { c.startService(new Intent(c, Vpn.class)); } catch (Exception e) { c.stopService(new Intent(c, Vpn.class)); }
     }
 
     // Android 12+ lets normal apps write always_on_vpn_app but not read it: null then.
