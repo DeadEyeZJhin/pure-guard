@@ -5,7 +5,7 @@ the app: the phone shows them under **What's new** after an update, and the upda
 them to phones that have not updated yet. `tools/release.py` reads one `## <version> — <date>`
 heading per release, then its `- ` bullets (a bullet may wrap onto indented lines).
 
-## 1.19 — upcoming
+## 1.19 — 2026-11-19
 - **"Unlock and remove" fully lets go.** The web filter stops right away, Android's always-on
   VPN no longer restarts it, and Private DNS goes back to Android's default.
 - **Xiaomi: "No restrictions" is detected.** Xiaomi manages VPN apps with its own
