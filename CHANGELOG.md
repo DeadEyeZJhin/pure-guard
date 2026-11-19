@@ -5,7 +5,7 @@ the app: the phone shows them under **What's new** after an update, and the upda
 them to phones that have not updated yet. `tools/release.py` reads one `## <version> — <date>`
 heading per release, then its `- ` bullets (a bullet may wrap onto indented lines).
 
-## 1.20 — upcoming
+## 1.20 — 2026-11-19
 - **Check for updates.** A "Check for updates" link on the home screen and at the bottom of the
   setup screen checks right away, instead of waiting for the automatic check (every 6 hours).
 
